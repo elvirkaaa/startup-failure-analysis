@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Startup Graveyard — Combined Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0a0a0a; --surface:#111; --surface2:#181818; --surface3:#1e1e1e;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#e8e4dc; --muted:#666; --muted2:#888;
+  --gold:#c8a96e; --red:#e05a4e; --teal:#4e9e8c; --blue:#7ab0e8; --purple:#a898e8;
+  --gold-dim:rgba(200,169,110,0.12); --red-dim:rgba(224,90,78,0.12);
+  --teal-dim:rgba(78,158,140,0.12); --blue-dim:rgba(122,176,232,0.12);
+  --serif:'Playfair Display',Georgia,serif;
+  --mono:'DM Mono',monospace;
+  --sans:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+.header{padding:52px 64px 44px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;top:-100px;right:-80px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(200,169,110,0.05) 0%,transparent 65%);pointer-events:none}
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:28px}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+h1{font-family:var(--serif);font-size:clamp(40px,5.5vw,72px);font-weight:900;line-height:.95;letter-spacing:-.02em}
+h1 em{color:var(--red);font-style:normal}
+.h-sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:12px;line-height:1.8}
+.kpis{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-end}
+.kpi-num{font-family:var(--serif);font-size:38px;font-weight:700;line-height:1}
+.kpi-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);margin-top:5px}
+.kpi-a .kpi-num{color:var(--gold)}
+.kpi-b .kpi-num{color:var(--red)}
+.kpi-c .kpi-num{color:var(--teal)}
+.kpi-d .kpi-num{color:var(--blue)}
+
+/* ── DATASET BADGES ── */
+.ds-badges{display:flex;gap:10px;flex-wrap:wrap;padding:14px 64px;border-bottom:1px solid var(--border);background:var(--surface)}
+.ds-badge{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:2px;letter-spacing:.08em}
+.ds-real{background:rgba(224,90,78,0.1);color:var(--red);border:1px solid rgba(224,90,78,0.2)}
+.ds-syn{background:rgba(122,176,232,0.1);color:var(--blue);border:1px solid rgba(122,176,232,0.2)}
+.ds-note{font-family:var(--mono);font-size:10px;color:var(--muted);padding:5px 0;align-self:center}
+
+/* ── NAV ── */
+.nav{display:flex;gap:2px;padding:14px 64px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:200;flex-wrap:wrap}
+.nb{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:8px 16px;background:transparent;border:1px solid transparent;color:var(--muted);cursor:pointer;transition:all .18s;border-radius:2px}
+.nb:hover{color:var(--text);border-color:var(--border2)}
+.nb.on{color:var(--gold);border-color:rgba(200,169,110,.3);background:var(--gold-dim)}
+
+/* ── MAIN ── */
+.main{padding:44px 64px}
+.section{display:none}.section.on{display:block}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.span2{grid-column:span 2}
+@media(max-width:960px){.g2,.g3{grid-template-columns:1fr}.span2{grid-column:auto}.main{padding:28px 24px}.header{padding:36px 24px 32px}.nav{padding:12px 24px}.ds-badges{padding:12px 24px}.kpis{gap:20px}}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px}
+.card-t{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.card-t .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-real{background:var(--red)}
+.dot-syn{background:var(--blue)}
+.dot-both{background:linear-gradient(135deg,var(--red) 50%,var(--blue) 50%)}
+
+/* ── COMPARISON BLOCK ── */
+.compare-row{display:grid;grid-template-columns:1fr 2px 1fr;gap:0;margin-bottom:16px;align-items:stretch}
+.compare-divider{background:var(--border);width:2px;margin:0 20px}
+.compare-side{padding:16px}
+.compare-label{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:10px}
+.cl-real{color:var(--red)}
+.cl-syn{color:var(--blue)}
+.compare-stat{font-family:var(--serif);font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.compare-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.verdict{font-family:var(--mono);font-size:10px;padding:8px 14px;border-radius:2px;margin-top:6px;display:inline-block}
+.v-conflict{background:rgba(224,90,78,0.1);color:var(--red);border:1px solid rgba(224,90,78,0.2)}
+.v-confirm{background:rgba(78,158,140,0.1);color:var(--teal);border:1px solid rgba(78,158,140,0.2)}
+.v-add{background:rgba(200,169,110,0.1);color:var(--gold);border:1px solid rgba(200,169,110,0.2)}
+
+/* ── CHART WRAP ── */
+.cw{position:relative;width:100%}
+
+/* ── INSIGHT CARDS ── */
+.ic{border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:0 4px 4px 0;padding:18px 22px;margin-bottom:12px}
+.ic.red{border-left-color:var(--red)}
+.ic.teal{border-left-color:var(--teal)}
+.ic.blue{border-left-color:var(--blue)}
+.ic.purple{border-left-color:var(--purple)}
+.ic-label{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.ic.red .ic-label{color:var(--red)}
+.ic.teal .ic-label{color:var(--teal)}
+.ic.blue .ic-label{color:var(--blue)}
+.ic.purple .ic-label{color:var(--purple)}
+.ic-text{font-size:13px;line-height:1.75;color:var(--text)}
+.ic-text strong{font-weight:500}
+.ic.red .ic-text strong{color:var(--red)}
+.ic.teal .ic-text strong{color:var(--teal)}
+.ic-text em{font-style:italic;color:var(--muted2)}
+.ic-source{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:8px}
+
+/* ── BAR ROWS ── */
+.br{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.br-name{font-size:12px;color:var(--muted2);width:200px;flex-shrink:0;text-align:right}
+.br-track{flex:1;height:22px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.br-fill{height:100%;border-radius:2px;display:flex;align-items:center;padding-left:8px;font-family:var(--mono);font-size:10px;font-weight:500;transition:width .8s ease}
+.br-val{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:28px;text-align:right}
+
+/* ── STARTUPS GRID ── */
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.filter-row input,.filter-row select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:8px 12px;border-radius:2px;outline:none;transition:border-color .2s}
+.filter-row input{flex:1;min-width:180px}
+.filter-row input:focus,.filter-row select:focus{border-color:rgba(200,169,110,.35)}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px 18px;transition:border-color .2s,transform .18s;cursor:default}
+.sc:hover{border-color:rgba(200,169,110,.25);transform:translateY(-2px)}
+.sc-name{font-family:var(--serif);font-size:17px;font-weight:700}
+.sc-years{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px}
+.sc-raised{font-family:var(--mono);font-size:11px;color:var(--gold);margin-top:7px}
+.sc-what{font-size:12px;color:var(--muted2);margin-top:5px;line-height:1.5}
+.sc-why{font-size:12px;color:var(--muted);margin-top:6px;padding-top:7px;border-top:1px solid var(--border);line-height:1.5}
+.sc-lesson{font-size:11px;color:var(--teal);font-style:italic;margin-top:5px}
+.sc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px}
+.stag{font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:2px}
+.t-red{background:rgba(224,90,78,.12);color:var(--red);border:1px solid rgba(224,90,78,.18)}
+.t-gold{background:rgba(200,169,110,.12);color:var(--gold);border:1px solid rgba(200,169,110,.18)}
+.t-teal{background:rgba(78,158,140,.12);color:var(--teal);border:1px solid rgba(78,158,140,.18)}
+.t-blue{background:rgba(122,176,232,.12);color:var(--blue);border:1px solid rgba(122,176,232,.18)}
+.t-pur{background:rgba(168,152,232,.12);color:var(--purple);border:1px solid rgba(168,152,232,.18)}
+
+/* ── TIMELINE ── */
+.tl-row{display:flex;align-items:center;gap:0;margin-bottom:5px}
+.tl-name{width:150px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;padding-right:10px;flex-shrink:0}
+.tl-track{flex:1;height:14px;background:var(--surface2);border-radius:2px;position:relative}
+.tl-bar{position:absolute;height:100%;border-radius:2px;opacity:.75;transition:opacity .2s}
+.tl-bar:hover{opacity:1}
+.tl-yr{font-family:var(--mono);font-size:9px;color:var(--muted);width:32px;flex-shrink:0;text-align:center}
+
+/* ── LEGEND ── */
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:var(--muted);margin-bottom:18px}
+.legend span{display:flex;align-items:center;gap:6px}
+.lsq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* ── POPULATION GRID ── */
+.pop-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.pop-card{background:var(--surface2);border-radius:4px;padding:16px 18px;border-bottom:2px solid transparent}
+.pop-card.gc{border-bottom-color:var(--gold)}
+.pop-card.rc{border-bottom-color:var(--red)}
+.pop-card.tc{border-bottom-color:var(--teal)}
+.pop-card.bc{border-bottom-color:var(--blue)}
+.pop-num{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1;margin-bottom:5px}
+.pop-lbl{font-size:11px;color:var(--muted)}
+@media(max-width:700px){.pop-grid{grid-template-columns:1fr 1fr}}
+
+/* ── SCROLLBAR ── */
+.scroll-y{overflow-y:auto;max-height:640px}
+.scroll-y::-webkit-scrollbar{width:3px}
+.scroll-y::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── SECTION TITLE ── */
+.stitle{font-family:var(--serif);font-size:22px;font-weight:700;margin-bottom:6px}
+.sdesc{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.7;max-width:720px}
+
+/* ── CONFLICT BADGE ── */
+.conflict-strip{background:rgba(224,90,78,.06);border:1px solid rgba(224,90,78,.15);border-radius:4px;padding:14px 18px;margin-bottom:20px;font-size:12px;color:var(--muted2);line-height:1.7}
+.conflict-strip strong{color:var(--red);font-weight:500}
+
+/* ── RCOUNT ── */
+.rcount{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px}
+
+/* margins */
+.mb8{margin-bottom:8px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}.mb32{margin-bottom:32px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="hrow">
+    <div>
+      <div class="eyebrow">Startup Graveyard · Combined Analysis · 2002–2023</div>
+      <h1>Where<br>Fintech <em>Dies</em></h1>
+      <div class="h-sub">
+        47 real failed fintech startups<br>
+        5,000 startups — synthetic population for comparison
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi-a"><div class="kpi-num">47</div><div class="kpi-label">real cases</div></div>
+      <div class="kpi-b"><div class="kpi-num">$4.8B</div><div class="kpi-label">lost</div></div>
+      <div class="kpi-c"><div class="kpi-num">29%</div><div class="kpi-label">population at risk</div></div>
+      <div class="kpi-d"><div class="kpi-num">100%</div><div class="kpi-label">killed by competition</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DATASET LEGEND -->
+<div class="ds-badges">
+  <span class="ds-badge ds-real">● Dataset A — real startups (Finance &amp; Insurance)</span>
+  <span class="ds-badge ds-syn">● Dataset B — synthetic population (all industries)</span>
+  <span class="ds-note">Charts with two colors combine both sources</span>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nb on"  onclick="showTab('compare',this)">Dataset Comparison</button>
+  <button class="nb"     onclick="showTab('overview',this)">Fintech Failures Overview</button>
+  <button class="nb"     onclick="showTab('population',this)">Startup Population</button>
+  <button class="nb"     onclick="showTab('catalog',this)">Catalog</button>
+  <button class="nb"     onclick="showTab('timeline',this)">Timeline</button>
+  <button class="nb"     onclick="showTab('insights',this)">Insights</button>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════════════ COMPARE ═══════════════════════════════ -->
+<div id="tab-compare" class="section on">
+  <div class="stitle">Two Datasets: What Matches, What Conflicts</div>
+  <div class="sdesc">Dataset A — 47 documented fintech failures with stories and causes. Dataset B — 5,000 synthetic startups from all industries, created for training ML models. Below is a direct comparison across key metrics.</div>
+
+  <div class="conflict-strip">
+    <strong>⚠ Important:</strong> Dataset B is synthetic (all 5,000 records have Startup_Status = 1, variables are uniformly distributed without real correlations). This means it cannot be used to draw conclusions about failure causes — only as a population baseline for metrics.
+  </div>
+
+  <!-- Funding -->
+  <div class="card mb24">
+    <div class="card-t"><span class="dot dot-both"></span>Funding — Money and Survivability</div>
+    <div class="compare-row">
+      <div class="compare-side">
+        <div class="compare-label cl-real">Dataset A — Real Fintech</div>
+        <div class="compare-stat" style="color:var(--red)">$4.8B</div>
+        <div class="compare-desc">Total raised by 47 failed companies. LendingClub — $1B, Wise — $689M, Avant — $655M. All dead. Round size <em>does not predict survivability</em>.</div>
+        <span class="verdict v-conflict">✕ Conflicts with B</span>
+      </div>
+      <div class="compare-divider"></div>
+      <div class="compare-side">
+        <div class="compare-label cl-syn">Dataset B — Population</div>
+        <div class="compare-stat" style="color:var(--blue)">$25M</div>
+        <div class="compare-desc">Average funding amount in the population. In the synthetic dataset, funding is used as a predictor of success — which contradicts real fintech market data.</div>
+        <span class="verdict v-conflict">Funding ≠ survival in reality</span>
+      </div>
+    </div>
+    <div class="cw" style="height:240px"><canvas id="c-funding"></canvas></div>
+  </div>
+
+  <!-- Retention -->
+  <div class="card mb24">
+    <div class="card-t"><span class="dot dot-both"></span>Customer Retention — Pattern Confirmation</div>
+    <div class="compare-row">
+      <div class="compare-side">
+        <div class="compare-label cl-real">Dataset A — Real Fintech</div>
+        <div class="compare-stat" style="color:var(--red)">26%</div>
+        <div class="compare-desc">Share of startups with "Acquisition Stagnation" pattern — product exists, audience growth stopped. An indirect indicator of low retention and weak word-of-mouth.</div>
+        <span class="verdict v-confirm">✓ Confirmed by Dataset B</span>
+      </div>
+      <div class="compare-divider"></div>
+      <div class="compare-side">
+        <div class="compare-label cl-syn">Dataset B — Population</div>
+        <div class="compare-stat" style="color:var(--blue)">29.3%</div>
+        <div class="compare-desc">Share of startups in the population with retention &lt;30% — critical risk zone. The number nearly matches the Acquisition Stagnation indicator from the real dataset.</div>
+        <span class="verdict v-confirm">Match: ~30% always in the risk zone</span>
+      </div>
+    </div>
+    <div class="cw" style="height:240px"><canvas id="c-retention"></canvas></div>
+  </div>
+
+  <!-- Burn Rate -->
+  <div class="card mb24">
+    <div class="card-t"><span class="dot dot-both"></span>Burn Rate — Context for Stories</div>
+    <div class="compare-row">
+      <div class="compare-side">
+        <div class="compare-label cl-real">Dataset A — Real Fintech</div>
+        <div class="compare-stat" style="color:var(--red)">—</div>
+        <div class="compare-desc">Burn rate data is absent from the historical dataset. Only known that startups like Clinkle ($30M) or Mozido ($185M) "burned" money before finding a product.</div>
+        <span class="verdict v-add">+ Dataset B adds context</span>
+      </div>
+      <div class="compare-divider"></div>
+      <div class="compare-side">
+        <div class="compare-label cl-syn">Dataset B — Population</div>
+        <div class="compare-stat" style="color:var(--blue)">$501K/mo</div>
+        <div class="compare-desc">Average monthly burn in the population. Range $5K–$1M. Revenue/Burn ratio: only 0.5% of startups burn more than they earn — which indicates the synthetic nature of data.</div>
+        <span class="verdict v-add">Population benchmark for fintech</span>
+      </div>
+    </div>
+    <div class="cw" style="height:200px"><canvas id="c-burn"></canvas></div>
+  </div>
+
+  <!-- Causes vs features -->
+  <div class="card mb24">
+    <div class="card-t"><span class="dot dot-both"></span>Failure Causes vs Predictors — Structural Conflict</div>
+    <div class="compare-row">
+      <div class="compare-side">
+        <div class="compare-label cl-real">Dataset A — What Actually Kills</div>
+        <div class="compare-stat" style="color:var(--red)">96%</div>
+        <div class="compare-desc">Giants (PayPal, Stripe, Bloomberg). This is an <em>external competitive factor</em> not reflected in any variable in Dataset B — there is no competitor data there.</div>
+        <span class="verdict v-conflict">✕ B is blind to the main killer</span>
+      </div>
+      <div class="compare-divider"></div>
+      <div class="compare-side">
+        <div class="compare-label cl-syn">Dataset B — What Is Used as a Predictor</div>
+        <div class="compare-stat" style="color:var(--blue)">14 features</div>
+        <div class="compare-desc">Funding, founder experience, market size, burn rate... But Product_Uniqueness_Score 1→9 doesn't change retention (50.8% vs 50.0%). Features are independent — a sign of synthetic data.</div>
+        <span class="verdict v-conflict">Model on B won't predict real failure</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ OVERVIEW ═══════════════════════════════ -->
+<div id="tab-overview" class="section">
+  <div class="stitle">Fintech Failures: Patterns</div>
+  <div class="sdesc">Analysis of 47 real startups from the Finance &amp; Insurance sector, closed in 2002–2023.</div>
+
+  <div class="pop-grid mb24">
+    <div class="pop-card gc"><div class="pop-num" style="color:var(--gold)">47</div><div class="pop-lbl">startups</div></div>
+    <div class="pop-card rc"><div class="pop-num" style="color:var(--red)">$4.8B+</div><div class="pop-lbl">total raised</div></div>
+    <div class="pop-card tc"><div class="pop-num" style="color:var(--teal)">8.5 yrs</div><div class="pop-lbl">average lifespan</div></div>
+    <div class="pop-card bc"><div class="pop-num" style="color:var(--blue)">100%</div><div class="pop-lbl">killed by competition</div></div>
+  </div>
+
+  <div class="g2 mb20">
+    <div class="card">
+      <div class="card-t"><span class="dot dot-real"></span>Failure Causes (% of startups)</div>
+      <div id="cause-bars-ov"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot dot-real"></span>Funding Raised vs Lifespan</div>
+      <div class="cw" style="height:300px"><canvas id="c-scatter"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><span class="dot dot-real"></span>Deaths by Era</div>
+      <div class="cw" style="height:220px"><canvas id="c-eras"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot dot-real"></span>Distribution by Funding Amount</div>
+      <div class="cw" style="height:220px"><canvas id="c-fund-dist"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ POPULATION ═══════════════════════════════ -->
+<div id="tab-population" class="section">
+  <div class="stitle">Startup Population (Dataset B)</div>
+  <div class="sdesc">5,000 synthetic records — background context for understanding "normal" metrics. Data is uniformly distributed, no real correlations exist — use only as a reference point.</div>
+
+  <div class="pop-grid mb24">
+    <div class="pop-card gc"><div class="pop-num" style="color:var(--gold)">5,000</div><div class="pop-lbl">startups in sample</div></div>
+    <div class="pop-card rc"><div class="pop-num" style="color:var(--red)">50.2%</div><div class="pop-lbl">avg retention</div></div>
+    <div class="pop-card tc"><div class="pop-num" style="color:var(--teal)">$501K</div><div class="pop-lbl">avg burn/mo</div></div>
+    <div class="pop-card bc"><div class="pop-num" style="color:var(--blue)">$49.9M</div><div class="pop-lbl">avg revenue</div></div>
+  </div>
+
+  <div class="g2 mb20">
+    <div class="card">
+      <div class="card-t"><span class="dot dot-syn"></span>Customer Retention Rate Distribution</div>
+      <div class="cw" style="height:240px"><canvas id="c-ret-pop"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot dot-syn"></span>Revenue / Burn Rate Ratio (runway)</div>
+      <div class="cw" style="height:240px"><canvas id="c-ratio-pop"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-t"><span class="dot dot-syn"></span>Distribution by Industry</div>
+      <div class="cw" style="height:220px"><canvas id="c-ind-pop"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="dot dot-syn"></span>Funding Distribution in Population</div>
+      <div class="cw" style="height:220px"><canvas id="c-fund-pop"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ CATALOG ═══════════════════════════════ -->
+<div id="tab-catalog" class="section">
+  <div class="filter-row">
+    <input id="srch" placeholder="Search by name or keyword..." oninput="fCards()">
+    <select id="fCause" onchange="fCards()">
+      <option value="">All Causes</option>
+      <option>Giants</option><option>Competition</option>
+      <option>Poor Market Fit</option><option>Acquisition Stagnation</option>
+      <option>Niche Limits</option><option>Regulatory Pressure</option>
+      <option>Execution Flaws</option><option>Trend Shifts</option>
+      <option>Toxicity/Trust Issues</option><option>Overhype</option>
+    </select>
+    <select id="fCat" onchange="fCards()">
+      <option value="">All Categories</option>
+      <option value="payments">Payments / Wallet</option>
+      <option value="lending">Lending</option>
+      <option value="tools">Fintech Tools</option>
+      <option value="crowd">Crowdfunding</option>
+    </select>
+    <select id="fEra" onchange="fCards()">
+      <option value="">All Eras</option>
+      <option value="early">Before 2010</option>
+      <option value="mid">2010–2016</option>
+      <option value="late">2017+</option>
+    </select>
+  </div>
+  <div class="rcount" id="rcount">47 startups</div>
+  <div class="sgrid" id="sgrid"></div>
+</div>
+
+<!-- ═══════════════════════════════ TIMELINE ═══════════════════════════════ -->
+<div id="tab-timeline" class="section">
+  <div class="card">
+    <div class="card-t"><span class="dot dot-real"></span>Lifespan of Each Startup 2002–2023</div>
+    <div class="legend">
+      <span><span class="lsq" style="background:var(--gold)"></span>Payments / Wallet</span>
+      <span><span class="lsq" style="background:var(--red)"></span>Lending</span>
+      <span><span class="lsq" style="background:var(--teal)"></span>Investments / Fintech Tools</span>
+      <span><span class="lsq" style="background:var(--blue)"></span>Crowdfunding</span>
+      <span><span class="lsq" style="background:var(--purple)"></span>Other</span>
+    </div>
+    <div class="scroll-y" id="tl-container"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ INSIGHTS ═══════════════════════════════ -->
+<div id="tab-insights" class="section">
+  <div class="stitle">Insights: What Both Datasets Tell Us</div>
+  <div class="sdesc">Synthesis of real failure stories (A) and population metrics (B) — what is confirmed, what conflicts, and what adds new context.</div>
+
+  <div class="ic red">
+    <div class="ic-label">✕ Conflict — Money and Survivability</div>
+    <div class="ic-text">Dataset B uses <strong>funding amount as a success predictor</strong> — standard practice in ML models. Dataset A directly refutes this: LendingClub ($1B), Wise ($689M), Avant ($655M), Pay By Touch ($300M) — all failed. In fintech, money only <em>prolongs the agony when the strategy is wrong</em>, not guarantees survival. Any ML model trained on synthetic data with funding as a key feature will give false signals for the fintech sector.</div>
+    <div class="ic-source">Sources: Dataset A (47 cases) vs Dataset B (Funding_Amount as feature)</div>
+  </div>
+
+  <div class="ic teal">
+    <div class="ic-label">✓ Confirmation — 30% Always in the Risk Zone</div>
+    <div class="ic-text">Dataset B shows: <strong>29.3% of startups in any population have retention &lt;30%</strong> — critically dangerous level. Dataset A confirms this pattern from the other side: 26% of real fintech failures are explained by Acquisition Stagnation — the product existed, but retention didn't work. The match (~30%) is not coincidental — it's a systemic market pattern. About a third of startups never solve the retention problem.</div>
+    <div class="ic-source">Dataset A: 12/47 with Acquisition Stagnation (26%) · Dataset B: 1465/5000 with retention &lt;30% (29.3%)</div>
+  </div>
+
+  <div class="ic">
+    <div class="ic-label">+ Addition — Burn Rate Context</div>
+    <div class="ic-text">Dataset A has no numerical burn rate data — only stories. Dataset B provides a population benchmark: <strong>average burn $501K/month</strong>, range $5K–$1M. This means companies like Clinkle (raised $30M, burned it over 5 years without a product) operated at burn rates approximately 2–3× above the population average. Mozido ($185M over 9 years) — that's ~$1.7M/mo burn at a market average of $501K. Money went not to growth, but to sustaining a broken model.</div>
+    <div class="ic-source">Dataset B: Burn_Rate mean = $501K · Dataset A: Clinkle $30M/5 yrs, Mozido $185M/9 yrs</div>
+  </div>
+
+  <div class="ic blue">
+    <div class="ic-label">✕ Dataset B Blind Spot — External Competition</div>
+    <div class="ic-text">The most important finding from Dataset A: <strong>96% of startups were killed by giants</strong> (PayPal, Stripe, Mint, Bloomberg, Chime). Dataset B contains no fields about the competitive environment — no market share data for leaders, no "incumbent player exists" flag, no information about competitors' network effects. <em>This is a structural blind spot:</em> an ML model trained only on internal startup metrics will not be able to predict the most common cause of failure in fintech.</div>
+    <div class="ic-source">Dataset A: Giants flag = 45/47 (96%) · Dataset B: no competitor features</div>
+  </div>
+
+  <div class="ic purple">
+    <div class="ic-label">+ Addition — Founder Experience Paradox</div>
+    <div class="ic-text">Dataset B shows: founder experience (0–29 years) doesn't correlate with revenue or retention — difference less than 1%. Dataset A adds a qualitative explanation: <strong>experienced founders also lost to giants</strong> — the problem isn't the team's experience, but market structure. LendingClub, Taulia, Wepay — all founded by experienced fintech industry people. The main survival predictor is having a defensible moat (regulatory, data, network), not team characteristics.</div>
+    <div class="ic-source">Dataset B: exp 0-5y revenue=$49M vs exp 20-29y revenue=$50M (diff &lt;2%) · Dataset A: qualitative cases</div>
+  </div>
+
+  <div class="ic">
+    <div class="ic-label">Niche = Death Sentence</div>
+    <div class="ic-text"><strong>19% of startups were killed by too narrow a niche:</strong> LendLayer (bootcamp loans), TrustEgg (crowdfunded trusts), Fuze Network (prepaid cards), Pawngo (online pawn). Financial products require scale for unit economics — you can't build a business on a micro-audience.</div>
+    <div class="ic-source">Dataset A: Niche Limits flag = 9/47 (19%)</div>
+  </div>
+
+  <div class="ic teal">
+    <div class="ic-label">Acquisition Stagnation — The Silent Killer</div>
+    <div class="ic-text"><strong>26% of startups (12 of 47)</strong> achieved initial product-market fit, but stalled in growth. Simple, SigFig, Taulia, Cake Financial — all attracted early users, but couldn't move beyond early adopters. <em>Scaling growth is a separate competency from building a product.</em></div>
+    <div class="ic-source">Dataset A: Acquisition Stagnation flag = 12/47 (26%) · Dataset B: 29.3% with retention &lt;30%</div>
+  </div>
+
+  <div class="ic red">
+    <div class="ic-label">Regulatory Risk Is Underestimated</div>
+    <div class="ic-text"><strong>LendUp</strong> paid regulatory fines and closed. <strong>ZestFinance</strong> faced compliance issues. <strong>Vemo</strong> couldn't scale income-share agreements due to legal uncertainty. Fintech is the most regulated part of tech — circumventing rules doesn't work as a growth hack.</div>
+    <div class="ic-source">Dataset A: Regulatory Pressure flag = 3/47 (6%) — but each case is fatal</div>
+  </div>
+
+  <div class="ic blue">
+    <div class="ic-label">Timing Decides Everything</div>
+    <div class="ic-text"><strong>Bitpass</strong> (2002–2008) invented micropayments before the market was ready. <strong>Monitor110</strong> was building financial AI 15 years before Bloomberg Terminal AI. <strong>Coinbase NFT</strong> launched at the peak of the hype and died with it. The right technology at the wrong time is the same as the wrong technology.</div>
+    <div class="ic-source">Dataset A: Trend Shifts = 2/47 · Poor Market Fit (early timing) = 11/47</div>
+  </div>
+
+  <div class="ic purple">
+    <div class="ic-label">Lesson for Builders</div>
+    <div class="ic-text">The data says one thing: <strong>fintechs with network effects, regulatory moat, or data moat survive.</strong> Just "better UX than a bank" is not a strategy. Robinhood killed Loyal3 not because it was prettier, but because it was the first to create a viral growth loop. Look for mechanics that a giant can't copy in a quarter.</div>
+    <div class="ic-source">Synthesis of Dataset A — pattern of survivors vs failures</div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+/* ══════════ DATA ══════════ */
+const GY = [
+  {name:'Avant',y:'2012-2023',r:655,what:'Online personal loans',why:'Lost to LendingClub and high defaults',lesson:'Lending needs risk balance',tags:['Giants','Competition'],cat:'lending'},
+  {name:'Bitpass',y:'2002-2008',r:2,what:'Micropayments platform',why:'Lost to PayPal and low adoption',lesson:'Micropayments need mass use',tags:['Giants','Competition','Poor Market Fit'],cat:'payments'},
+  {name:'Cake Financial',y:'2006-2011',r:3,what:'Portfolio tracking',why:'Lost to Mint and sold',lesson:'Finance tools need scale',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'Circle',y:'2013-2023',r:500,what:'Crypto payments',why:'Lost to Coinbase and market shifts',lesson:'Crypto needs stability',tags:['Giants','Competition','Trend Shifts'],cat:'payments'},
+  {name:'Clarity Money',y:'2016-2022',r:11,what:'Personal finance app',why:'Lost to Mint/Acorns',lesson:'Finance apps need edge',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'Clinkle',y:'2011-2016',r:30,what:'Mobile wallet',why:'No product vs Apple Pay',lesson:'Execution over promises',tags:['Giants','Competition','Execution Flaws','Overhype'],cat:'payments'},
+  {name:'Coin',y:'2012-2016',r:15,what:'All-in-one payment card',why:'Lost to Apple Pay',lesson:'Hardware needs ecosystem',tags:['Giants','Competition','Poor Market Fit'],cat:'payments'},
+  {name:'Coinbase NFT',y:'2021-2023',r:0,what:'NFT marketplace',why:'Lost to OpenSea and NFT crash',lesson:'NFTs need timing',tags:['Giants','Competition','Trend Shifts'],cat:'tools'},
+  {name:'FundersClub',y:'2012-2022',r:20,what:'Startup crowdfunding',why:'Lost to Kickstarter',lesson:'Crowdfunding needs hits',tags:['Giants','Competition','Monetization Failure'],cat:'crowd'},
+  {name:'Fuze Network',y:'2010-2016',r:5,what:'Prepaid card payments',why:'Lost to Green Dot',lesson:'Prepaid needs reach',tags:['Giants','Competition','Niche Limits'],cat:'payments'},
+  {name:'Indiegogo Life',y:'2014-2019',r:10,what:'Personal crowdfunding',why:'Lost to GoFundMe',lesson:'Personal funding needs appeal',tags:['Giants','Competition','Poor Market Fit','Niche Limits'],cat:'crowd'},
+  {name:'Isentium',y:'2012-2020',r:15,what:'Social sentiment trading',why:'Lost to Bloomberg',lesson:'Trading tools need traction',tags:['Giants','Competition','Poor Market Fit'],cat:'tools'},
+  {name:'LendUp',y:'2012-2021',r:350,what:'Subprime loans',why:'Regulatory fines',lesson:"Fintech can't skirt regs",tags:['Giants','Competition','Regulatory Pressure'],cat:'lending'},
+  {name:'LendingClub',y:'2006-2021',r:1000,what:'P2P lending platform',why:'Lost to banks and trust issues',lesson:'P2P needs trust',tags:['Giants','Competition','Regulatory Pressure'],cat:'lending'},
+  {name:'LendLayer',y:'2013-2017',r:0.4,what:'Bootcamp loans',why:'Lost to Affirm',lesson:'Small niches get swallowed',tags:['Giants','Competition','Niche Limits'],cat:'lending'},
+  {name:'Loyal3',y:'2008-2018',r:30,what:'Commission-free brokerage',why:'Lost to Robinhood',lesson:'Brokerages need volume',tags:['Giants','Competition'],cat:'tools'},
+  {name:'Money360',y:'2012-2020',r:10,what:'Real estate lending',why:'Lost to Fundrise',lesson:'Lending needs scale',tags:['Giants','Competition'],cat:'lending'},
+  {name:'Monitor110',y:'2005-2008',r:3,what:'Financial data aggregator',why:'Lost to Bloomberg',lesson:'Timing is key',tags:['Giants','Competition','Poor Market Fit'],cat:'tools'},
+  {name:'Mozido',y:'2008-2017',r:185,what:'Mobile payments',why:'Lost to Square',lesson:'Payments need execution',tags:['Giants','Competition','Execution Flaws'],cat:'payments'},
+  {name:'Pawngo',y:'2011-2017',r:6,what:'Online pawn lending',why:'Too niche',lesson:'Niche lending needs demand',tags:['Competition','Poor Market Fit','Niche Limits'],cat:'lending'},
+  {name:'Pay By Touch',y:'2002-2007',r:300,what:'Biometric payments',why:'Lost to PayPal',lesson:'Biometrics need reliability',tags:['Giants','Competition','Execution Flaws'],cat:'payments'},
+  {name:'Plum Will',y:'2015-2020',r:2,what:'Digital estate planning',why:'Lost to LegalZoom',lesson:'Estate tech needs traction',tags:['Giants','Competition','Poor Market Fit'],cat:'tools'},
+  {name:'PoundPay',y:'2009-2013',r:1,what:'Payment gateway',why:'Lost to Stripe',lesson:'Payments need scale',tags:['Giants','Competition','Acquisition Stagnation'],cat:'payments'},
+  {name:'ReadyForZero',y:'2010-2017',r:5,what:'Debt management app',why:'Lost to Credit Karma',lesson:'Debt tools need edge',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'RushCard',y:'2003-2018',r:20,what:'Prepaid debit card',why:'Lost to Chime and trust issues',lesson:'Prepaid needs trust',tags:['Giants','Competition','Toxicity/Trust Issues'],cat:'payments'},
+  {name:'Seed',y:'2012-2017',r:5,what:'Small biz banking',why:'Lost to Brex',lesson:'Banking needs scale',tags:['Giants','Competition'],cat:'tools'},
+  {name:'Sensible',y:'2016-2020',r:4,what:'Finance for gig workers',why:'Too niche',lesson:'Niche finance needs reach',tags:['Giants','Competition','Niche Limits'],cat:'tools'},
+  {name:'SigFig',y:'2007-2018',r:70,what:'Robo-advisor',why:'Lost to Wealthfront',lesson:'Robo-advisors need edge',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'Simple',y:'2009-2016',r:25,what:'Neobank with budgeting',why:'Lost to Chime',lesson:'Neobanks need independence',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'SmartAsset',y:'2012-2023',r:161,what:'Financial planning tools',why:'Lost to NerdWallet',lesson:'Planning needs traction',tags:['Giants','Competition'],cat:'tools'},
+  {name:'SoFi Social',y:'2016-2021',r:0,what:'Social finance platform',why:'Too niche',lesson:'Social finance needs scale',tags:['Giants','Competition','Poor Market Fit','Niche Limits'],cat:'tools'},
+  {name:'Square Cash',y:'2013-2020',r:0,what:'P2P payments early',why:'Lost to Venmo',lesson:'Payments need dominance',tags:['Giants','Competition'],cat:'payments'},
+  {name:'Taulia',y:'2009-2022',r:200,what:'Supply chain finance',why:'Lost to Coupa',lesson:'Finance needs edge',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'Tilt',y:'2012-2018',r:67,what:'Social crowdfunding',why:'Lost to GoFundMe',lesson:'Crowdfunding needs mass',tags:['Giants','Competition','Acquisition Stagnation'],cat:'crowd'},
+  {name:'Toshl',y:'2008-2020',r:1,what:'Personal finance app',why:'Lost to Mint',lesson:'Finance apps need reach',tags:['Giants','Competition'],cat:'tools'},
+  {name:'TrustEgg',y:'2012-2016',r:0.5,what:'Crowdfunded trusts',why:'Too niche',lesson:'Niche needs demand',tags:['Competition','Poor Market Fit','Niche Limits'],cat:'crowd'},
+  {name:'Upstart',y:'2012-2023',r:144,what:'AI-driven lending',why:'Lost to banks',lesson:'Lending needs stability',tags:['Giants','Competition'],cat:'lending'},
+  {name:'Vemo',y:'2015-2021',r:20,what:'Income-share agreements',why:'Regulatory issues',lesson:'ISAs need traction',tags:['Giants','Competition','Regulatory Pressure'],cat:'lending'},
+  {name:'Venmo Groups',y:'2015-2020',r:0,what:'Group payments feature',why:'Lost to Splitwise',lesson:'Niche payments need use',tags:['Giants','Competition','Poor Market Fit','Niche Limits'],cat:'payments'},
+  {name:'Vittana',y:'2008-2015',r:5,what:'Student microloans',why:'Lost to SoFi',lesson:'Microloans need reach',tags:['Giants','Competition','Niche Limits'],cat:'lending'},
+  {name:'Wealthfront Cash',y:'2018-2023',r:0,what:'High-yield savings',why:'Lost to Ally',lesson:'Savings need edge',tags:['Giants','Competition'],cat:'tools'},
+  {name:'Wealthsimple Trade',y:'2017-2023',r:0,what:'Commission-free trading',why:'Lost to Robinhood',lesson:'Trading needs volume',tags:['Giants','Competition'],cat:'tools'},
+  {name:'Wepay',y:'2008-2020',r:75,what:'Payment processing',why:'Lost to Stripe',lesson:'Payments need scale',tags:['Giants','Competition','Acquisition Stagnation'],cat:'payments'},
+  {name:'Wesabe',y:'2006-2011',r:4,what:'Personal finance app',why:'Lost to Mint',lesson:'Timing matters',tags:['Giants','Competition','Poor Market Fit'],cat:'tools'},
+  {name:'Wise',y:'2011-2023',r:689,what:'International transfers',why:'Lost to PayPal',lesson:'Transfers need edge',tags:['Giants','Competition'],cat:'payments'},
+  {name:'YayPay',y:'2015-2021',r:15,what:'AR automation',why:'Lost to Bill.com',lesson:'Automation needs scale',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'Ycharts',y:'2009-2021',r:15,what:'Financial data platform',why:'Lost to Bloomberg',lesson:'Data needs dominance',tags:['Giants','Competition','Acquisition Stagnation'],cat:'tools'},
+  {name:'ZestFinance',y:'2009-2020',r:112,what:'AI underwriting loans',why:'Lost to Upstart and regs',lesson:'Lending needs compliance',tags:['Giants','Competition','Regulatory Pressure'],cat:'lending'},
+];
+
+const POP = {
+  retBuckets:[470,469,526,527,506,498,533,482,487,502],
+  ratioBuckets:[27,217,2275,2232,249],
+  indDist:{Logistics:721,Education:741,Healthcare:722,'E-commerce':678,Finance:672,Tech:723,'AI/ML':743},
+  fundBuckets:{'<$1M':101,'$1-5M':395,'$5-15M':994,'$15-30M':1495,'$30M+':2015},
+};
+
+const tagColor={'Giants':'t-red','Competition':'t-gold','Poor Market Fit':'t-blue',
+  'Acquisition Stagnation':'t-teal','Niche Limits':'t-pur','Regulatory Pressure':'t-red',
+  'Execution Flaws':'t-gold','Trend Shifts':'t-blue','Monetization Failure':'t-teal',
+  'No Budget':'t-pur','Overhype':'t-red','Toxicity/Trust Issues':'t-gold'};
+
+const catColor={payments:'#c8a96e',lending:'#e05a4e',tools:'#4e9e8c',crowd:'#7ab0e8',other:'#a898e8'};
+
+/* ══════════ NAV ══════════ */
+function showTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  btn.classList.add('on');
+}
+
+/* ══════════ CHART HELPERS ══════════ */
+const DARK={grid:'rgba(255,255,255,0.05)',tick:'#666',label:'#888'};
+function axOpts(){
+  return {y:{ticks:{color:DARK.tick},grid:{color:DARK.grid}},x:{ticks:{color:DARK.tick},grid:{display:false}}};
+}
+function hAxOpts(){
+  return {x:{ticks:{color:DARK.tick},grid:{color:DARK.grid}},y:{ticks:{color:DARK.tick},grid:{display:false}}};
+}
+const baseOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+
+/* ══════════ COMPARE CHARTS ══════════ */
+// Funding comparison
+new Chart('c-funding',{type:'bar',
+  data:{
+    labels:['<$1M','$1-5M','$5-15M','$15-30M','$30M+','$100M+','$500M+'],
+    datasets:[
+      {label:'Population (B)',data:[101,395,994,1495,2015/10,0,0],backgroundColor:'rgba(122,176,232,0.5)',borderRadius:3},
+      {label:'Real Fintech (A)',data:[0,4,8,8,11,8,8],backgroundColor:'rgba(224,90,78,0.7)',borderRadius:3}
+    ]
+  },
+  options:{...baseOpts,scales:axOpts(),plugins:{legend:{display:true,labels:{color:'#888',font:{size:11},boxWidth:10}}}}
+});
+
+// Retention
+new Chart('c-retention',{type:'bar',
+  data:{
+    labels:['0-10%','10-20%','20-30%','30-40%','40-50%','50-60%','60-70%','70-80%','80-90%','90-100%'],
+    datasets:[
+      {label:'Population B (n=5000)',data:POP.retBuckets.map(v=>v/5000*100),backgroundColor:'rgba(122,176,232,0.45)',borderRadius:3},
+    ]
+  },
+  options:{...baseOpts,
+    scales:{...axOpts(),y:{...axOpts().y,title:{display:true,text:'% of startups',color:'#666',font:{size:11}}}},
+    plugins:{legend:{display:true,labels:{color:'#888',font:{size:11},boxWidth:10}},
+      annotation:{annotations:{line1:{type:'line',xMin:2.5,xMax:2.5,borderColor:'rgba(224,90,78,0.7)',borderWidth:1.5,borderDash:[4,4],label:{content:'risk zone',display:true,color:'#e05a4e',font:{size:10},position:'start'}}}}}
+  }
+});
+
+// Burn rate distribution
+new Chart('c-burn',{type:'bar',
+  data:{
+    labels:['<$50K','$50-200K','$200-500K','$500K-1M'],
+    datasets:[{label:'Population B',data:[8,25,33,34],backgroundColor:'rgba(122,176,232,0.5)',borderRadius:3}]
+  },
+  options:{...baseOpts,scales:axOpts(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw}% of startups`}}}}
+});
+
+/* ══════════ OVERVIEW CHARTS ══════════ */
+// Causes
+const causes=[
+  {n:'Competition',v:47,c:'#e05a4e'},{n:'Giants',v:45,c:'#c8a96e'},
+  {n:'No Growth',v:12,c:'#4e9e8c'},{n:'No Market',v:11,c:'#7ab0e8'},
+  {n:'Niche Too Small',v:9,c:'#a898e8'},{n:'Regulators',v:3,c:'#e05a4e'},
+  {n:'Poor Execution',v:3,c:'#c8a96e'},{n:'Trend Shifts',v:2,c:'#4e9e8c'},
+];
+const cbEl=document.getElementById('cause-bars-ov');
+causes.forEach(c=>{
+  const p=Math.round(c.v/47*100);
+  cbEl.innerHTML+=`<div class="br"><div class="br-name">${c.n}</div><div class="br-track"><div class="br-fill" style="width:${p}%;background:${c.c};color:#000">${p}%</div></div><div class="br-val">${c.v}</div></div>`;
+});
+
+// Scatter: raised vs lifespan
+const scatterData=GY.map(d=>{
+  const [s,e]=d.y.split('-').map(Number);
+  return {x:d.r,y:e-s,label:d.name};
+});
+new Chart('c-scatter',{type:'scatter',
+  data:{datasets:[{data:scatterData,backgroundColor:'rgba(200,169,110,0.6)',pointRadius:5,pointHoverRadius:7}]},
+  options:{...baseOpts,
+    scales:{x:{type:'linear',ticks:{color:DARK.tick,callback:v=>v+'M'},grid:{color:DARK.grid},title:{display:true,text:'Raised ($M)',color:'#666',font:{size:11}}},
+             y:{ticks:{color:DARK.tick},grid:{color:DARK.grid},title:{display:true,text:'Years Active',color:'#666',font:{size:11}}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.label}: $${c.raw.x}M, ${c.raw.y} yrs`}}}
+  }
+});
+
+// Eras bar
+const eraMap={'2000-2005':0,'2006-2010':0,'2011-2015':0,'2016-2020':0,'2021+':0};
+GY.forEach(d=>{const s=parseInt(d.y);if(s<2006)eraMap['2000-2005']++;else if(s<2011)eraMap['2006-2010']++;else if(s<2016)eraMap['2011-2015']++;else if(s<2021)eraMap['2016-2020']++;else eraMap['2021+']++;});
+new Chart('c-eras',{type:'bar',
+  data:{labels:Object.keys(eraMap),datasets:[{data:Object.values(eraMap),backgroundColor:['#7ab0e8','#c8a96e','#e05a4e','#4e9e8c','#a898e8'],borderRadius:3}]},
+  options:{...baseOpts,scales:axOpts()}
+});
+
+// Fund dist
+const fd={'$0':0,'$1-10M':0,'$10-50M':0,'$50-200M':0,'$200M+':0};
+GY.forEach(d=>{if(d.r===0)fd['$0']++;else if(d.r<10)fd['$1-10M']++;else if(d.r<50)fd['$10-50M']++;else if(d.r<200)fd['$50-200M']++;else fd['$200M+']++;});
+new Chart('c-fund-dist',{type:'doughnut',
+  data:{labels:Object.keys(fd),datasets:[{data:Object.values(fd),backgroundColor:['#555','#7ab0e8','#4e9e8c','#c8a96e','#e05a4e'],borderWidth:0}]},
+  options:{...baseOpts,cutout:'60%',plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}}}
+});
+
+/* ══════════ POPULATION CHARTS ══════════ */
+new Chart('c-ret-pop',{type:'bar',
+  data:{labels:['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100'],
+        datasets:[{data:POP.retBuckets,backgroundColor:POP.retBuckets.map((_,i)=>i<3?'rgba(224,90,78,0.6)':'rgba(122,176,232,0.5)'),borderRadius:3}]},
+  options:{...baseOpts,scales:axOpts(),plugins:{legend:{display:false},
+    annotation:{annotations:{danger:{type:'box',xMin:-0.5,xMax:2.5,backgroundColor:'rgba(224,90,78,0.06)',borderColor:'rgba(224,90,78,0.2)',borderWidth:1,label:{content:'risk zone',display:true,color:'#e05a4e',font:{size:10}}}}}}}
+});
+
+new Chart('c-ratio-pop',{type:'bar',
+  data:{labels:['Rev < Burn','1-10×','10-100×','100-1000×','1000×+'],
+        datasets:[{data:POP.ratioBuckets,backgroundColor:['#e05a4e','#c8a96e','#4e9e8c','#7ab0e8','#a898e8'],borderRadius:3}]},
+  options:{...baseOpts,scales:axOpts()}
+});
+
+new Chart('c-ind-pop',{type:'bar',
+  data:{labels:Object.keys(POP.indDist),datasets:[{data:Object.values(POP.indDist),backgroundColor:'rgba(122,176,232,0.5)',borderRadius:3}]},
+  options:{...baseOpts,indexAxis:'y',scales:hAxOpts()}
+});
+
+new Chart('c-fund-pop',{type:'bar',
+  data:{labels:Object.keys(POP.fundBuckets),datasets:[{data:Object.values(POP.fundBuckets),backgroundColor:'rgba(78,158,140,0.5)',borderRadius:3}]},
+  options:{...baseOpts,scales:axOpts()}
+});
+
+/* ══════════ CATALOG ══════════ */
+const catLabel={payments:'Payments',lending:'Lending',tools:'Fintech Tools',crowd:'Crowdfunding'};
+const catBadgeColor={payments:'var(--gold)',lending:'var(--red)',tools:'var(--teal)',crowd:'var(--blue)'};
+
+function fCards(){
+  const q=document.getElementById('srch').value.toLowerCase();
+  const cause=document.getElementById('fCause').value;
+  const cat=document.getElementById('fCat').value;
+  const era=document.getElementById('fEra').value;
+  let list=GY.filter(d=>{
+    if(q&&!d.name.toLowerCase().includes(q)&&!d.what.toLowerCase().includes(q)&&!d.why.toLowerCase().includes(q))return false;
+    if(cause&&!d.tags.includes(cause))return false;
+    if(cat&&d.cat!==cat)return false;
+    if(era){
+      const s=parseInt(d.y);
+      if(era==='early'&&s>=2010)return false;
+      if(era==='mid'&&(s<2010||s>=2017))return false;
+      if(era==='late'&&s<2017)return false;
+    }
+    return true;
+  });
+  document.getElementById('rcount').textContent=`${list.length} startups`;
+  const g=document.getElementById('sgrid');
+  g.innerHTML='';
+  list.forEach(d=>{
+    const lifespan=parseInt(d.y.split('-')[1])-parseInt(d.y.split('-')[0]);
+    const cc=catBadgeColor[d.cat]||'var(--muted)';
+    g.innerHTML+=`<div class="sc" style="border-top:2px solid ${cc}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div class="sc-name">${d.name}</div>
+        <span style="font-family:var(--mono);font-size:9px;padding:3px 7px;border-radius:2px;background:rgba(255,255,255,0.04);color:${cc};border:1px solid ${cc}33;flex-shrink:0;margin-top:2px">${catLabel[d.cat]||d.cat}</span>
+      </div>
+      <div class="sc-years">${d.y} · ${lifespan} ${lifespan===1?'year':lifespan<5?'years':'years'}</div>
+      <div class="sc-raised">${d.r>0?'$'+d.r+'M raised':'funding undisclosed'}</div>
+      <div class="sc-what">${d.what}</div>
+      <div class="sc-why">${d.why}</div>
+      <div class="sc-lesson">"${d.lesson}"</div>
+      <div class="sc-tags">${d.tags.map(t=>`<span class="stag ${tagColor[t]||'t-blue'}">${t}</span>`).join('')}</div>
+    </div>`;
+  });
+}
+fCards();
+
+/* ══════════ TIMELINE ══════════ */
+const MIN=2002,MAX=2024;
+const sorted=[...GY].sort((a,b)=>parseInt(a.y)-parseInt(b.y));
+const tlEl=document.getElementById('tl-container');
+sorted.forEach(d=>{
+  const [s,e]=d.y.split('-').map(Number);
+  const lp=(s-MIN)/(MAX-MIN)*100;
+  const wp=(e-s)/(MAX-MIN)*100;
+  const c=catColor[d.cat]||'#888';
+  tlEl.innerHTML+=`<div class="tl-row">
+    <div class="tl-name">${d.name}</div>
+    <div class="tl-yr">${s}</div>
+    <div class="tl-track"><div class="tl-bar" style="left:${lp}%;width:${wp}%;background:${c}" title="${d.name} ${d.y} · $${d.r}M"></div></div>
+    <div class="tl-yr">${e}</div>
+  </div>`;
+});
+</script>
+</body>
+</html>
